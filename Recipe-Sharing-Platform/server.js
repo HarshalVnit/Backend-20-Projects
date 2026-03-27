@@ -1,23 +1,16 @@
+// server.js (Top of the file)
 const express = require('express');
 const dotenv = require('dotenv');
-const path = require('path'); // Node built-in for file paths
+const path = require('path');
+const cors = require('cors'); // ADD THIS
 const connectDB = require('./config/db');
 
-// Route Imports
-const userRoutes = require('./routes/userRoutes');
-const recipeRoutes = require('./routes/recipeRoutes');
-
-dotenv.config();
-connectDB();
+// ... (routes imports)
 
 const app = express();
 
-// 1. Standard Middleware
+app.use(cors()); // ADD THIS right before express.json()
 app.use(express.json());
-
-// 2. 🚨 THE NEW PART: Static Folder Middleware
-// This tells Express: "If someone asks for a file in /uploads, look in the physical uploads folder"
-// Without this line, your image URLs will all return 404 Not Found!
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 3. Routes
