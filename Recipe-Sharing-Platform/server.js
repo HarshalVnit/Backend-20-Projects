@@ -22,7 +22,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 3. Routes
 app.use('/api/users', userRoutes);
-app.use('/api/recipes', recipeRoutes);
+app.use('/api/recipes', require('./routes/recipeRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
