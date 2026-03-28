@@ -1,0 +1,22 @@
+datasource db {
+  provider = "sqlite"
+  // url line removed
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Member {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  joinedAt  DateTime @default(now())
+}
+
+model WorkoutType {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String
+  durationMin  Int
+}
