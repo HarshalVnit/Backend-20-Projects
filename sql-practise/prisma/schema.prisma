@@ -1,0 +1,44 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// --- TABLE 1: MEMBERS ---
+model Member {
+  id           Int           @id @default(autoincrement())
+  email        String        @unique
+  name         String
+  joinedAt     DateTime      @default(now())
+  
+  // The reverse relation (A member has many reservations)
+  reservations Reservation[] 
+}
+
+// --- TABLE 2: WORKOUTS ---
+model WorkoutType {
+  id           Int           @id @default(autoincrement())
+  title        String   
+  description  String
+  durationMin  Int      
+  
+  // The reverse relation (A workout has many reservations)
+  reservations Reservation[]
+}
+
+// --- TABLE 3: THE BRIDGE (Foreign Keys) ---
+model Reservation {
+  id         Int         @id @default(autoincrement())
+  createdAt  DateTime    @default(now())
+
+  // Connect to Member
+  memberId   Int
+  member     Member      @relation(fields: [memberId], references: [id])
+
+  // Connect to Workout
+  workoutId  Int
+  workout    WorkoutType @relation(fields: [workoutId], references: [id])
+}

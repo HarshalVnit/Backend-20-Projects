@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // url      = env("DATABASE_URL") //not used in 7+ version
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  tickets   Ticket[]
+  createdAt DateTime @default(now())
+}
+
+model Movie {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String
+  genre       String
+  durationMin Int
+  posterUrl   String?
+  showtimes   Showtime[]
+  createdAt   DateTime   @default(now())
+}
+
+model Theater {
+  id       Int      @id @default(autoincrement())
+  name     String
+  location String
+  screens  Screen[]
+}
+
+model Screen {
+  id        Int        @id @default(autoincrement())
+  name      String
+  theaterId Int
+  theater   Theater    @relation(fields: [theaterId], references: [id])
+  seats     Seat[]
+  showtimes Showtime[]
+}
+
+model Seat {
+  id       Int      @id @default(autoincrement())
+  row      String
+  number   Int
+  screenId Int
+  screen   Screen   @relation(fields: [screenId], references: [id])
+  tickets  Ticket[]
+}
+
+model Showtime {
+  id        Int      @id @default(autoincrement())
+  startTime DateTime
+  movieId   Int
+  movie     Movie    @relation(fields: [movieId], references: [id])
+  screenId  Int
+  screen    Screen   @relation(fields: [screenId], references: [id])
+  tickets   Ticket[]
+}
+
+model Ticket {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  showtimeId Int
+  showtime   Showtime @relation(fields: [showtimeId], references: [id])
+  seatId     Int
+  seat       Seat     @relation(fields: [seatId], references: [id])
+  status     String   @default("BOOKED") //could also be BOOKED , CANCELLED
+  bookedAt   DateTime @default(now())
+
+  //critical Prevent doubel booking
+  //this is composite constraint ensure for specific showtime
+  @@unique([showtimeId, seatId])
+}
