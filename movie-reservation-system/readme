@@ -1,0 +1,100 @@
+
+# 🎬 Movie Reservation System (Backend Engine)
+
+A high-performance, secure Node.js & PostgreSQL backend for real-time movie theater seat bookings. This system features **concurrency control**, **automated seat-release timers**, and **JWT authentication**.
+
+## 🚀 Key Features
+
+* **Real-Time Seat Holding:** Users can hold a seat for 30 seconds.
+* **Automated "Sweeper" Service:** A background worker that automatically releases expired "Pending" seats back to the public pool.
+* **Race-Condition Protection:** Built with SQL Transactions and Foreign Key constraints to ensure a seat can *never* be double-booked.
+* **JWT Authentication:** Secure User Registration and Login using `bcryptjs` for password hashing and `jsonwebtoken` for session management.
+* **Smart Availability API:** Generates a real-time seating chart (A1-D5) by overlaying database reservations onto a virtual theater blueprint.
+* **Database:** Hosted on **Neon (PostgreSQL)** for serverless scalability.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Runtime:** Node.js / Express.js
+* **Database:** PostgreSQL (Neon)
+* **Security:** JSON Web Tokens (JWT), Bcrypt Password Hashing
+* **Validation:** Custom Middleware for Auth & Request filtering.
+
+---
+
+## 🏗️ Architecture & Database Design
+
+The system is built on a relational model to ensure data integrity.
+
+
+
+### **The "Sweeper" Logic**
+To prevent "Ghost Seats" (seats that are held but never paid for), the system uses a dual-layer protection:
+1.  **Background Worker:** Runs every 60 seconds to clear all expired pending rows.
+2.  **Pre-Sweep Guard:** When a user attempts to book a seat, the system checks if an expired ticket exists for that seat and deletes it instantly, bypassing the background timer.
+
+---
+
+## 📡 API Endpoints
+
+### **Authentication**
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Create a new account (hashes password). |
+| `POST` | `/api/auth/login` | Returns a JWT Bearer Token. |
+
+### **Movies & Showtimes**
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/movies` | List all movies. |
+| `GET` | `/api/showtimes/:id/seats` | Get 20-seat layout with `available/pending/confirmed` status. |
+
+### **Reservations (Protected by JWT)**
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/reservations` | Hold a seat (Starts 30s timer). |
+| `POST` | `/api/reservations/:id/checkout` | Process mock payment & confirm seat. |
+| `GET` | `/api/reservations/user/:userId` | Get user's ticket history via 3-table SQL JOIN. |
+
+---
+
+## 🚦 Getting Started
+
+1.  **Clone the repo:**
+    ```bash
+    git clone <your-repo-url>
+    npm install
+    ```
+2.  **Set up Environment Variables (`.env`):**
+    ```env
+    DATABASE_URL=your_postgresql_url
+    JWT_SECRET=your_secret_key
+    PORT=3000
+    ```
+3.  **Run Migrations:**
+    ```bash
+    node upgrade.js      # Adds timers/columns
+    node upgradeAuth.js  # Adds security columns
+    ```
+4.  **Seed the Database:**
+    ```bash
+    node seed.js
+    ```
+5.  **Start the Engine:**
+    ```bash
+    npm start
+    ```
+
+---
+
+## 🛡️ Security Implementation
+* **Passwords:** Stored using salted hashes (Cost factor: 10).
+* **Authorization:** Bearer Token strategy.
+* **Payload Protection:** `user_id` is extracted from the JWT server-side, preventing "ID Spoofing" where a user tries to book a ticket for someone else.
+
+---
+
+**This project proves my ability to handle complex relational data and time-sensitive backend logic.**
+
+Are you ready to show this to the world, or do you want to add the **Admin Dashboard** so theater managers can actually add new movies through the API?

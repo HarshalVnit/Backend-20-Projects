@@ -1,7 +1,0 @@
-.env
-node_modules
-
-*.db
-*.db-journal
-
-/generated/prisma
