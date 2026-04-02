@@ -1,0 +1,81 @@
+
+# 🍽️ AI-Powered Restaurant Review API & Live Leaderboard
+
+A high-performance backend architecture that combines relational data storage, Natural Language Processing (NLP), and an in-memory Redis cache to provide real-time restaurant sentiment leaderboards.
+
+## 🚀 Key Features
+
+* **AI Sentiment Analysis:** Automatically reads user text reviews and calculates a weighted sentiment score (Positive/Neutral/Negative) using Lexicon-based NLP.
+* **Live In-Memory Leaderboard:** Uses Redis Sorted Sets (`ZSET`) to instantly aggregate and sort restaurant rankings in sub-milliseconds, bypassing heavy SQL queries.
+* **Hybrid Data Pipeline:** * *Permanent Storage:* PostgreSQL ensures reviews and relationships are securely stored.
+  * *Fast Retrieval:* Upstash Redis serves the highly-trafficked leaderboard routes.
+* **Serverless Ready:** Built with Upstash (REST-based Redis) and Neon (Serverless Postgres) for infinite scalability and zero idle-costs.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Runtime:** Node.js / Express.js
+* **Database (Relational):** PostgreSQL (Neon)
+* **Database (In-Memory/Cache):** Redis (Upstash Serverless REST API)
+* **AI/Machine Learning:** `sentiment` (AFINN-165 Lexicon NLP)
+
+---
+
+## 🏗️ Architecture Flow
+
+1. User submits a review (`POST /api/reviews`).
+2. The Node.js **NLP Engine** tokenizes the text and generates an emotional weight score.
+3. The raw text and score are permanently archived in **PostgreSQL**.
+4. The score is simultaneously pushed to a **Redis Sorted Set** (`zincrby`), instantly re-ranking the global leaderboard.
+5. Users fetch the Top 10 list (`GET /api/reviews/leaderboard`) directly from RAM, resulting in ultra-low latency.
+
+---
+
+## 📡 API Endpoints
+
+### **Reviews & AI**
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/reviews` | Submit a review. Triggers AI analysis, SQL insert, and Redis update. |
+| `GET` | `/api/reviews/leaderboard` | Fetch the Top 10 Restaurants instantly from the Redis cache. |
+| `GET` | `/api/health` | Pulse check for server availability. |
+
+---
+
+## 🚦 Getting Started
+
+1.  **Clone the repo:**
+    ```bash
+    git clone <your-repo-url>
+    npm install
+    ```
+2.  **Set up Environment Variables (`.env`):**
+    ```env
+    PORT=3000
+    DATABASE_URL=your_neon_postgres_url
+    UPSTASH_REDIS_REST_URL=your_upstash_url
+    UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+    ```
+3.  **Run Database Migrations:**
+    ```bash
+    node setupDB.js
+    ```
+4.  **Start the Engine:**
+    ```bash
+    npm run dev
+    ```
+
+---
+
+## 📝 Architect's Note: Scope & Focus
+
+If you are reviewing this repository, you might notice the absence of a User Authentication (JWT) module or an Admin CRUD interface for creating new restaurants. 
+
+This omission is **intentional**. 
+
+The sole architectural focus of this microservice was to demonstrate the **Hybrid Data Pipeline** (combining PostgreSQL, Redis In-Memory caching, and local NLP analysis). 
+
+Standard user authentication, role-based access control (RBAC), and standard CRUD operations were extensively covered and demonstrated in my previous architecture: **[Insert Link to your Movie Theater Repo Here]**. 
+
+In a true microservices environment, this Restaurant Review engine would simply sit behind an API Gateway, receiving pre-authenticated `user_id` payloads from a dedicated Identity Service.
