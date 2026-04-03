@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Battleship Multiplayer</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #222; color: white; }
+        .grid-container { display: flex; justify-content: center; gap: 50px; margin-top: 20px; }
+        .board-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .board { display: grid; grid-template-columns: repeat(5, 50px); gap: 5px; }
+        .cell { width: 50px; height: 50px; background-color: #444; border: 1px solid #888; cursor: pointer; }
+        
+        /* Colors for different states */
+        .cell.ship { background-color: #4CAF50; } /* Green */
+        .cell.hit { background-color: #f44336; pointer-events: none; } /* Red */
+        .cell.miss { background-color: #ddd; pointer-events: none; } /* White */
+        
+        /* The enemy board starts hidden and unclickable */
+        #enemyBoard { display: none; pointer-events: none; }
+        
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background: #008CBA; color: white; border: none; border-radius: 5px; display: none; margin-top: 20px;}
+    </style>
+</head>
+<body>
+    <h1>⚓ Battleship</h1>
+    <h2 id="status" style="color: orange;">Connecting...</h2>
+    
+    <div class="grid-container">
+        <div class="board-wrapper">
+            <h3>My Ships</h3>
+            <div id="myBoard" class="board"></div>
+        </div>
+
+        <div class="board-wrapper">
+            <h3 id="enemyTitle" style="display:none;">Enemy Waters</h3>
+            <div id="enemyBoard" class="board"></div>
+        </div>
+    </div>
+
+    <button id="readyBtn" onclick="sendShips()">Lock In Ships</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const statusText = document.getElementById('status');
+        const myBoard = document.getElementById('myBoard');
+        const enemyBoard = document.getElementById('enemyBoard');
+        const readyBtn = document.getElementById('readyBtn');
+        
+        let myShips = []; 
+
+        // 1. Generate Both Grids
+        for (let i = 0; i < 25; i++) {
+            // My Board
+            const myCell = document.createElement('div');
+            myCell.classList.add('cell');
+            myCell.id = `my-${i}`; // ID like "my-0", "my-1"
+            myCell.addEventListener('click', () => {
+                if (myShips.length < 3 && !myCell.classList.contains('ship')) {
+                    myCell.classList.add('ship');
+                    myShips.push(i);
+                    if (myShips.length === 3) readyBtn.style.display = 'inline-block';
+                }
+            });
+            myBoard.appendChild(myCell);
+
+            // Enemy Board
+            const enemyCell = document.createElement('div');
+            enemyCell.classList.add('cell');
+            enemyCell.id = `enemy-${i}`; // ID like "enemy-0"
+            enemyCell.addEventListener('click', () => {
+                socket.emit('fire', i); // Tell server we shot at this number!
+            });
+            enemyBoard.appendChild(enemyCell);
+        }
+
+        function sendShips() {
+            socket.emit('lockShips', myShips); 
+            readyBtn.style.display = 'none'; 
+            myBoard.style.pointerEvents = 'none'; // Stop moving ships
+        }
+
+        function updateTurn(currentTurnId) {
+            if (currentTurnId === socket.id) {
+                statusText.innerText = "YOUR TURN! Fire at the enemy!";
+                statusText.style.color = "#008CBA"; // Blue
+                enemyBoard.style.pointerEvents = 'auto'; // Unlock enemy board
+            } else {
+                statusText.innerText = "Enemy's Turn. Brace for impact...";
+                statusText.style.color = "#f44336"; // Red
+                enemyBoard.style.pointerEvents = 'none'; // Lock enemy board
+            }
+        }
+
+        // --- Socket Listeners ---
+        socket.on('waiting', (data) => { statusText.innerText = data.message; statusText.style.color = "orange"; });
+        
+        socket.on('gameStart', (data) => { statusText.innerText = data.message; statusText.style.color = "#4CAF50"; });
+
+        socket.on('battleStarts', (data) => {
+            // Show the enemy board!
+            document.getElementById('enemyTitle').style.display = 'block';
+            enemyBoard.style.display = 'grid';
+            updateTurn(data.turn);
+        });
+
+        // The Combat Update!
+        socket.on('fireResult', (data) => {
+            const isMe = (data.shooter === socket.id);
+            const targetCell = isMe ? document.getElementById(`enemy-${data.targetId}`) : document.getElementById(`my-${data.targetId}`);
+            
+            // Turn the cell Red (hit) or White (miss)
+            if (data.hit) {
+                targetCell.classList.add('hit');
+            } else {
+                targetCell.classList.add('miss');
+            }
+
+            // Update the text for the next turn
+            updateTurn(data.nextTurn);
+        });
+
+        // Game Over Update
+        socket.on('gameOver', (data) => {
+            enemyBoard.style.pointerEvents = 'none'; // Stop all clicking
+            if (data.winner === socket.id) {
+                statusText.innerText = "🏆 YOU WIN! All enemy ships destroyed!";
+                statusText.style.color = "gold";
+            } else {
+                statusText.innerText = "💀 YOU LOSE! Your fleet was sunk.";
+                statusText.style.color = "darkred";
+            }
+        });
+    </script>
+</body>
+</html>
