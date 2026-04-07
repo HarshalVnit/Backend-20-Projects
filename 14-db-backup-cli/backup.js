@@ -7,11 +7,13 @@ const path = require("path");      // Phase 5: Path handling
 
 const program = new Command();
 
+// Configure the CLI name, help text, and version info.
 program
   .name("db-backup")
   .description("A CLI utility to backup a PostgreSQL database.")
   .version("1.0.0");
 
+// Define the required inputs the user must pass when running the command.
 program
   .requiredOption("-h, --host <string>", "Database host URL")
   .requiredOption("-u, --user <string>", "Database username")
@@ -32,6 +34,7 @@ const runBackup = async () => {
     password: options.pass,
     database: options.db,
     port: 5432, 
+    // Useful for hosted Postgres providers that require encrypted connections.
     ssl: { rejectUnauthorized: false }, 
   });
 
@@ -60,7 +63,8 @@ const runBackup = async () => {
 
     console.log(`📋 Found ${tables.length} tables:`, tables);
 
-    const schemaDump = []; // This array holds all our final SQL text
+    // Collect each CREATE TABLE and INSERT statement here before writing one final file.
+    const schemaDump = [];
 
     console.log("\n🏗️ Extracting blueprints and data...");
 
@@ -84,6 +88,7 @@ const runBackup = async () => {
       let createTableStr = `-- Blueprint for table: ${tableName}\n`;
       createTableStr += `CREATE TABLE ${tableName} (\n`;
 
+      // Turn column metadata into SQL column definitions for the backup file.
       const columnDefinitions = columns.map((col) => {
         let def = `  ${col.column_name} ${col.data_type}`;
         if (col.character_maximum_length) def += `(${col.character_maximum_length})`;
@@ -105,12 +110,14 @@ const runBackup = async () => {
       const rows = dataRes.rows;
 
       if (rows.length > 0) {
+        // Keep the INSERT column order aligned with the keys returned from PostgreSQL.
         const exactColumns = Object.keys(rows[0]);
         const columnsString = exactColumns.join(", ");
 
         let insertStr = `-- Data for table: ${tableName}\n`;
         insertStr += `INSERT INTO ${tableName} (${columnsString}) VALUES \n`;
 
+        // Convert JavaScript values into SQL-safe values.
         const valueStrings = rows.map((row) => {
           const formattedValues = exactColumns.map((colName) => {
             const val = row[colName];
@@ -118,6 +125,7 @@ const runBackup = async () => {
             if (val === null) return "NULL";
             
             if (typeof val === "string") {
+              // Escape single quotes so string values do not break the SQL syntax.
               const escapedString = val.replace(/'/g, "''");
               return `'${escapedString}'`;
             }
@@ -146,9 +154,11 @@ const runBackup = async () => {
     // ==========================================
     console.log("\n💾 Saving backup to hard drive...");
 
+    // Resolve the output path so the final save location is always absolute.
     const backupFolder = path.resolve(options.out);
     await fs.mkdir(backupFolder, { recursive: true });
 
+    // Add a timestamp to avoid overwriting previous backups.
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `${options.db}_backup_${timestamp}.sql`;
     
