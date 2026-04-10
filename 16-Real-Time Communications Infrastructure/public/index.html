@@ -1,0 +1,368 @@
+<!-- <!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Chat Lobby</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; display: flex; padding: 20px; }
+        #chat-section { width: 70%; padding-right: 20px; border-right: 1px solid #333; position: relative; }
+        #sidebar { width: 30%; padding-left: 20px; }
+        #chat-box { height: 400px; overflow-y: auto; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        /* New Styles for Phase 3 */
+        .system-msg { color: #888; font-style: italic; }
+        .my-msg { color: #00ff00; }
+        .other-msg { color: #00ccff; }
+        #typing-indicator { color: #ff9900; font-style: italic; height: 20px; margin-bottom: 10px;}
+        input[type="text"] { width: 80%; padding: 10px; background: #222; color: #0f0; border: 1px solid #444; }
+        button { padding: 10px 20px; background: #007acc; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    
+    <div id="chat-section">
+        <h2>System Terminal</h2>
+        <div id="chat-box"></div>
+        
+        <div id="typing-indicator"></div>
+
+        <div>
+            <input type="text" id="msg-input" placeholder="Type a message..." autocomplete="off">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <h2>🔴 Online Now</h2>
+        <div id="online-users"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const chatBox = document.getElementById('chat-box');
+        const onlineUsersBox = document.getElementById('online-users');
+        const msgInput = document.getElementById('msg-input');
+        const typingIndicator = document.getElementById('typing-indicator');
+
+        // Phase 2: Login
+        let myName = prompt("Enter your hacker alias:");
+        if (!myName) myName = "Anonymous_" + Math.floor(Math.random() * 1000);
+        socket.emit('user_joined', myName);
+
+        // Phase 2: System Listeners
+        socket.on('server_message', (msg) => chatBox.innerHTML += `<p class="system-msg">> ${msg}</p>`);
+        socket.on('active_users_list', (users) => {
+            onlineUsersBox.innerHTML = ''; 
+            users.forEach(user => onlineUsersBox.innerHTML += `<div>• ${user}</div>`);
+        });
+
+        // ==========================================
+        // --- PHASE 3: FRONTEND LOGIC ---
+        // ==========================================
+
+        // 1. Send Message (The Mouth)
+        function sendMessage() {
+            const text = msgInput.value.trim();
+            if (text === "") return;
+
+            // Instantly draw the message on OUR screen
+            chatBox.innerHTML += `<p class="my-msg"><strong>You:</strong> ${text}</p>`;
+            
+            // Fire the message to the Server
+            socket.emit('send_message', text);
+            
+            // Clear the input box and tell the server we stopped typing
+            msgInput.value = '';
+            socket.emit('stop_typing');
+        }
+
+        // Allow pressing "Enter" to send
+        msgInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // 2. Receive Message (The Ear)
+        socket.on('receive_message', (data) => {
+            chatBox.innerHTML += `<p class="other-msg"><strong>${data.sender}:</strong> ${data.text}</p>`;
+        });
+
+        // 3. Typing Telemetry Logic
+        let typingTimer; // We need a timer so it doesn't stay stuck on "is typing" forever
+
+        // When we press any key down, tell the server we are typing
+        msgInput.addEventListener('input', () => {
+            socket.emit('typing');
+            
+            // Clear the old timer, start a new 1-second countdown
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(() => {
+                socket.emit('stop_typing');
+            }, 1000);
+        });
+
+//         Look at addEventListener('input').
+// Unlike 'keypress' (which only fires when you hit Enter), 'input' fires every single time the text box changes.
+// If you type the word "Hello", that event fires 5 separate times.
+        // 4. Typing Ears (Listening to others)
+        socket.on('user_typing', (username) => {
+            typingIndicator.innerText = `${username} is typing...`;
+        });
+
+        socket.on('user_stopped_typing', () => {
+            typingIndicator.innerText = ''; // Clear the text
+        });
+
+    </script>
+</body>
+</html> -->
+
+
+<!-- //for addiion of rooms Logic[PHASEE 3.5]
+  -->
+
+
+  <!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Multi-Room Chat</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; display: flex; padding: 0; margin: 0; height: 100vh; }
+        
+        /* The 3-Column Layout */
+        #channels { width: 20%; background: #0a0a0a; padding: 20px; border-right: 1px solid #333; }
+        #chat-section { width: 60%; padding: 20px; display: flex; flex-direction: column; }
+        #sidebar { width: 20%; background: #151515; padding: 20px; border-left: 1px solid #333; }
+        
+        #chat-box { flex-grow: 1; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; padding: 10px; background: #000; }
+        .channel-btn { display: block; width: 100%; padding: 10px; background: #222; color: #0f0; border: 1px solid #444; margin-bottom: 10px; cursor: pointer; text-align: left; }
+        .channel-btn:hover { background: #333; }
+        
+        .system-msg { color: #888; font-style: italic; }
+        .my-msg { color: #00ff00; }
+        .other-msg { color: #00ccff; }
+        input[type="text"] { width: 80%; padding: 10px; background: #222; color: #0f0; border: 1px solid #444; }
+        button.send { padding: 10px 20px; background: #007acc; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    
+    <div id="channels">
+        <h2>🌐 Matrix Nodes</h2>
+        <button class="channel-btn" onclick="switchChannel('General')"># General</button>
+        <button class="channel-btn" onclick="switchChannel('Tech_Talk')"># Tech_Talk</button>
+        <button class="channel-btn" onclick="switchChannel('Top_Secret')"># Top_Secret</button>
+    </div>
+
+    <div id="chat-section">
+        <h2 id="current-room-title"># General</h2>
+        <div id="chat-box"></div>
+        <div>
+            <input type="text" id="msg-input" placeholder="Transmit data..." autocomplete="off">
+            <button class="send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <h2>🔴 In This Node</h2>
+        <div id="online-users"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const chatBox = document.getElementById('chat-box');
+        const onlineUsersBox = document.getElementById('online-users');
+        const msgInput = document.getElementById('msg-input');
+        const roomTitle = document.getElementById('current-room-title');
+
+        // Login
+        let myName = prompt("Enter your hacker alias:");
+        if (!myName) myName = "Anonymous_" + Math.floor(Math.random() * 1000);
+        socket.emit('user_joined', myName);
+
+        // --- The Channel Switcher Logic ---
+        function switchChannel(roomName) {
+            // 1. Clear the chat box so we don't see the old room's messages
+            chatBox.innerHTML = ''; 
+            
+            // 2. Change the title on our screen
+            roomTitle.innerText = `# ${roomName}`;
+            
+            // 3. Tell the server to unplug us and move us
+            socket.emit('switch_room', roomName);
+        }
+
+        // Send Message
+        function sendMessage() {
+            const text = msgInput.value.trim();
+            if (text === "") return;
+            chatBox.innerHTML += `<p class="my-msg"><strong>You:</strong> ${text}</p>`;
+            socket.emit('send_message', text);
+            msgInput.value = '';
+        }
+
+        msgInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Ears
+        socket.on('server_message', (msg) => chatBox.innerHTML += `<p class="system-msg">> ${msg}</p>`);
+        socket.on('receive_message', (data) => chatBox.innerHTML += `<p class="other-msg"><strong>${data.sender}:</strong> ${data.text}</p>`);
+        socket.on('active_users_list', (users) => {
+            onlineUsersBox.innerHTML = ''; 
+            users.forEach(user => onlineUsersBox.innerHTML += `<div>• ${user}</div>`);
+        });
+    </script>
+</body>
+</html>
+
+
+FINAL PHASE --> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Secure Multi-Room Chat</title>
+    <style>
+        body { background: #111; color: #0f0; font-family: monospace; display: flex; padding: 0; margin: 0; height: 100vh; }
+        
+        /* The 3-Column Layout */
+        #channels { width: 20%; background: #0a0a0a; padding: 20px; border-right: 1px solid #333; }
+        #chat-section { width: 60%; padding: 20px; display: flex; flex-direction: column; }
+        #sidebar { width: 20%; background: #151515; padding: 20px; border-left: 1px solid #333; }
+        
+        #chat-box { flex-grow: 1; overflow-y: auto; margin-bottom: 20px; border: 1px solid #333; padding: 10px; background: #000; }
+        .channel-btn { display: block; width: 100%; padding: 10px; background: #222; color: #0f0; border: 1px solid #444; margin-bottom: 10px; cursor: pointer; text-align: left; }
+        .channel-btn:hover { background: #333; }
+        
+        .system-msg { color: #888; font-style: italic; }
+        .my-msg { color: #00ff00; }
+        .other-msg { color: #00ccff; }
+        input[type="text"] { width: 80%; padding: 10px; background: #222; color: #0f0; border: 1px solid #444; }
+        button.send { padding: 10px 20px; background: #007acc; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    
+    <div id="channels">
+        <h2>🌐 Matrix Nodes</h2>
+        <button class="channel-btn" onclick="switchChannel('General')"># General</button>
+        <button class="channel-btn" onclick="switchChannel('Tech_Talk')"># Tech_Talk</button>
+        <button class="channel-btn" onclick="switchChannel('Top_Secret')"># Top_Secret</button>
+    </div>
+
+    <div id="chat-section">
+        <h2 id="current-room-title"># General</h2>
+        <div id="chat-box"></div>
+        <div>
+            <input type="text" id="msg-input" placeholder="Transmit secure data..." autocomplete="off">
+            <button class="send" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <h2>🔴 In This Node</h2>
+        <div id="online-users"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/crypto.js"></script>
+    
+    <script>
+        const socket = io();
+        const chatBox = document.getElementById('chat-box');
+        const onlineUsersBox = document.getElementById('online-users');
+        const msgInput = document.getElementById('msg-input');
+        const roomTitle = document.getElementById('current-room-title');
+
+        // Vault Variables
+        let myPrivateKey = null;
+        let myPublicKeyBase64 = null;
+        let roomRoster = {}; 
+
+        // 2. The Boot Sequence with Error Handling
+        async function bootSequence() {
+            try {
+                let myName = prompt("Enter your hacker alias:");
+                if (!myName) myName = "Anonymous_" + Math.floor(Math.random() * 1000);
+                
+                if (!window.crypto || !window.crypto.subtle) {
+                    alert("🚨 Security Block: The browser disabled cryptography. Make sure you are using http://localhost:3000");
+                    return; 
+                }
+
+                // Generate keys
+                const keys = await cryptoEngine.generateKeys();
+                myPrivateKey = keys.privateKey;
+                myPublicKeyBase64 = await cryptoEngine.exportPublicKey(keys.publicKey);
+                
+                // Send payload
+                socket.emit('user_joined', { 
+                    username: myName, 
+                    publicKey: myPublicKeyBase64 
+                });
+                
+            } catch (error) {
+                console.error("Encryption Error:", error);
+                alert("Failed to load encryption. Check your F12 Console. Ensure crypto.js is in your public folder.");
+            }
+        }
+        bootSequence(); 
+
+        // Channel Switcher (Payload format)
+        function switchChannel(roomName) {
+            chatBox.innerHTML = ''; 
+            roomTitle.innerText = `# ${roomName}`;
+            socket.emit('switch_room', { newRoom: roomName });
+        }
+
+        // Multi-Box Encryption for Sending
+        async function sendMessage() {
+            const text = msgInput.value.trim();
+            if (text === "") return;
+            
+            chatBox.innerHTML += `<p class="my-msg"><strong>You:</strong> ${text}</p>`;
+            msgInput.value = '';
+
+            const encryptedBundle = {};
+
+            for (const [targetSocketId, userData] of Object.entries(roomRoster)) {
+                if (targetSocketId !== socket.id) {
+                    const theirPadlock = await cryptoEngine.importPublicKey(userData.publicKey);
+                    const lockedGibberish = await cryptoEngine.encryptMessage(text, theirPadlock);
+                    encryptedBundle[targetSocketId] = lockedGibberish;
+                }
+            }
+
+            socket.emit('send_encrypted_message', encryptedBundle);
+        }
+
+        msgInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Decrypting Received Messages
+        socket.on('receive_encrypted_message', async (data) => {
+            const myLockedBox = data.bundle[socket.id];
+            if (myLockedBox) {
+                const decryptedText = await cryptoEngine.decryptMessage(myLockedBox, myPrivateKey);
+                chatBox.innerHTML += `<p class="other-msg"><strong>${data.senderName} 🔒:</strong> ${decryptedText}</p>`;
+            }
+        });
+
+        // System Listeners
+        socket.on('server_message', (msg) => chatBox.innerHTML += `<p class="system-msg">> ${msg}</p>`);
+        
+        socket.on('active_users_list', (usersDictionary) => {
+            roomRoster = usersDictionary;
+            onlineUsersBox.innerHTML = ''; 
+            for (const [socketId, data] of Object.entries(roomRoster)) {
+                onlineUsersBox.innerHTML += `<div>• ${data.username}</div>`;
+            }
+        });
+    </script>
+</body>
+</html>
